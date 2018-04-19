@@ -1,0 +1,127 @@
+var precipitation = ee.ImageCollection("users/WRAPincdc/precipitation"),
+    SRTM = ee.Image("users/WRAPincdc/SRTM"),
+    MOD16 = ee.ImageCollection("users/WRAPincdc/MOD16"),
+    GRACE = ee.ImageCollection("users/WRAPincdc/GRACE");
+
+
+// SRTM //
+Map.addLayer((SRTM), {palette: 'AFF0E9, 000000, EEF5A2, 28853D, DB7602, 750E02, C75402, 6B2B0B, FFFFFF', min: -433, max: 2809}, 'DEM');
+
+// MOD16 //
+Map.addLayer(ee.ImageCollection('users/WRAPincdc/MOD16')
+   .filterDate('2005-04-01', '2005-05-01'), {palette: 'ff0000, ff5200, ffa400, ffeb00, a8ff00, 3eff00, 00ff65, 00ffcf, 00e7ff, 00a0ff, 0042ff', min: 0, max: 863}, 'Evapotranspiration');
+   
+// GRACE //
+Map.addLayer(ee.ImageCollection('users/WRAPincdc/GRACE')
+   .filterDate('2005-02-01', '2005-03-01'), {palette: 'ff0000, ff5200, ffa400, ffeb00, a8ff00, 3eff00, 00ff65, 00ffcf, 00e7ff, 00a0ff, 0042ff', min: -10, max: 5}, 'Groundwater');
+
+// Precipitation //
+Map.addLayer(ee.ImageCollection('users/WRAPincdc/precipitation')
+ .filterDate('2015-01-01', '2015-02-01'), {'bands': ['b2'], palette: 'ff0000, ff5200, ffa400, ffeb00, a8ff00, 3eff00, 00ff65, 00ffcf, 00e7ff, 00a0ff, 0042ff', min: 0, max: 277}, 'Precipitation');
+
+// Left Panel ///
+var panel = ui.Panel();
+panel.style().set('width', '200px');
+
+var intro = ui.Panel([
+  ui.Label({
+    value: 'Pixel Inspector',
+    style: {fontSize: '20px', fontWeight: 'bold'}
+  }),
+  ui.Label('Click a point on the map to inspect the pixel values over time. The output will be in the panel to the right in the form of several time series graphs. Click on a new location if you would like the graphs to update with new pixel values.')
+]);
+panel.add(intro);
+
+var lon = ui.Label();
+var lat = ui.Label();
+panel.add(lon);
+panel.add(lat);
+
+Map.onClick(function(coords) {
+  lon.setValue('lon: ' + coords.lon);
+  lat.setValue('lat: ' + coords.lat);
+
+// Add a red dot to the map.
+ var point = ee.Geometry.Point(coords.lon, coords.lat);
+  var dot = ui.Map.Layer(point, {color: 'FF0000'}, 'Pixel of Interest');
+  Map.layers().set(7, dot);
+
+// Print a Groundwater chart.
+  var chart = ui.Chart.image.series(GRACE, point, ee.Reducer.mean(), 500);
+  chart.setSeriesNames(['GRACE']);
+  chart.setOptions({
+    title: 'Total Groundwater Storage Over Time',
+    vAxis: {title: 'Groundwater Z-Dimension (units)'},
+    hAxis: {title: 'Date', format: 'MM-yy', gridlines: {count: 8}},
+  });
+  panel.widgets().set(1, chart);
+});
+
+Map.style().set('cursor', 'crosshair');
+
+// Add the panel to the ui.root.
+ui.root.insert(0, panel);
+
+// Right Panel // 
+var panel = ui.Panel();
+panel.style().set('width', '500px');
+
+var intro = ui.Panel([]);
+panel.add(intro);
+
+Map.onClick(function(coords) {
+  lon.setValue('lon: ' + coords.lon);
+  lat.setValue('lat: ' + coords.lat);
+
+// Add a red dot to the map.
+  var point = ee.Geometry.Point(coords.lon, coords.lat);
+  var dot = ui.Map.Layer(point, {color: 'FF0000'}, 'Pixel of Interest');
+Map.layers().set(7, dot);
+
+// Print a precipitation chart.
+   var chart1 = ui.Chart.image.series(precipitation, point, ee.Reducer.mean(), 500);
+  chart1.setSeriesNames(['TRMM', 'GPM']);
+  chart1.setOptions({
+    title: 'Precipitation Over Time',
+    vAxis: {title: 'Precipitation (mm)'},
+    hAxis: {title: 'Date', format: 'MM-yy', gridlines: {count: 7}},
+  });
+  panel.widgets().set(0, chart1);
+});
+
+Map.style().set('cursor', 'crosshair');
+
+// Add the panel to the ui.root.
+ui.root.insert(1, panel);
+
+// Print a MOD16 chart
+
+// Add a red dot to the map.
+ Map.onClick(function(coords) {
+  lon.setValue('lon: ' + coords.lon);
+  lat.setValue('lat: ' + coords.lat);
+ 
+  var point = ee.Geometry.Point(coords.lon, coords.lat);
+  var dot = ui.Map.Layer(point, {color: 'FF0000'}, 'Pixel of Interest');
+  Map.layers().set(7, dot);
+ 
+   var chart = ui.Chart.image.series(MOD16, point, ee.Reducer.mean(), 500);
+  chart.setSeriesNames(['MODIS']);
+  chart.setOptions({
+    title: 'Total Evapotranspiration Over Time',
+    vAxis: {title: 'Evapotranspiration (mm/month)'},
+    hAxis: {title: 'Date', format: 'MM-yy', gridlines: {count: 7}},
+  });
+  panel.widgets().set(2, chart);
+
+});
+
+// Schools
+var schools = ee.FeatureCollection('ft:1R7hu9cnmZ8Br9JYPgLdylx_dTI0dOWWPnOuH3ZRv');
+addToMap (schools, {'color': 'ffffff'}, 'Schools');
+
+// Study Area Polygon 
+var studyarea = ee.FeatureCollection ('ft:1E3GWNhUbHI-jGuCORUeSR37HTn6V7o-nqv9dSlrA');
+addToMap (studyarea, {'color': 'FFFFFF'}, 'Study Area');
+
+Map.setCenter(36.45264, 31.09057, 7);
